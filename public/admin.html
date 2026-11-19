@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Panel Malamia</title>
+<link rel="icon" href="/logo.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@500&family=DM+Sans:wght@400;500;700&family=Syne:wght@700;800&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-bottom: 14px; }
+.top img { width: 84px; height: auto; display: block; }
+.top h1 { font-size: clamp(20px, 4.5vw, 28px); flex: 1; min-width: 150px; }
+.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin-bottom: 18px; overflow-x: auto; }
+.tabs button { border: 0; background: none; color: var(--muted); font: 700 15px var(--body); padding: 12px 16px; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+.tabs button[aria-selected=true] { color: var(--fg); border-bottom-color: var(--accent); }
+.tabs b { background: var(--yellow); color: var(--yellow-ink); border-radius: 999px; font-size: 12px; padding: 1px 8px; margin-left: 6px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.kpi { border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; background: var(--panel); }
+.kpi b { display: block; font: 800 28px var(--display); line-height: 1.1; }
+.kpi span { font-size: 13px; color: var(--muted); }
+.kpi.w b { color: var(--yellow); } .kpi.g b { color: var(--ok); }
+.grid { display: grid; gap: 18px; align-items: start; }
+@media (min-width: 900px) { .grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
+.mes-nav { display: flex; align-items: center; gap: 8px; }
+.mes-nav h2 { flex: 1; min-width: 0; }
+.mes-nav h2::first-letter, .dia-cab h2::first-letter, .cap::first-letter { text-transform: uppercase; }
+.mes-nav .btn { min-height: 40px; padding: 0 14px; }
+.sub { font-size: 14px; color: var(--muted); }
+.acal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.acal .wd { font: 700 11px var(--body); color: var(--muted); text-align: center; text-transform: uppercase; letter-spacing: .08em; padding: 4px 0; }
+.dia { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 70px; padding: 5px 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); color: var(--fg); cursor: pointer; text-align: left; min-width: 0; font-family: var(--body); }
+.dia.vac { background: transparent; border-color: transparent; cursor: default; }
+.dia.cerrado { background: transparent; opacity: .5; }
+.dia.abre { border-color: var(--accent); }
+.dia .n { font: 500 13px var(--mono); color: var(--muted); }
+.dia.hoy .n { color: var(--accent); }
+.dia.tiene { border-color: rgba(255, 63, 207, .55); }
+.dia.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dia .c { font: 800 15px var(--display); line-height: 1.1; margin-top: auto; }
+.dia .c small { font: 500 10px var(--body); color: var(--muted); margin-left: 2px; }
+.dia .pp { font-size: 10px; color: var(--muted); line-height: 1.1; white-space: nowrap; }
+.pts { display: flex; gap: 3px; height: 6px; }
+.pt { width: 6px; height: 6px; border-radius: 50%; display: block; }
+.pt.pendiente { background: var(--yellow); } .pt.validada { background: var(--ok); }
+.ley { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.ley span { display: inline-flex; align-items: center; gap: 6px; }
+.dia-cab { display: grid; gap: 6px; }
+.cap { display: block; }
+.res { border: 1px solid var(--line); border-radius: 14px; background: var(--panel-2); padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.res-h { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+.cod { font: 500 14px var(--mono); color: var(--muted); letter-spacing: .05em; }
+.pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font: 700 12px var(--body); border: 1px solid; }
+.pill.pendiente { color: var(--yellow); background: rgba(255, 210, 63, .1); border-color: rgba(255, 210, 63, .45); }
+.pill.validada { color: var(--ok); background: rgba(82, 224, 143, .12); border-color: rgba(82, 224, 143, .4); }
+.pill.rechazada { color: var(--muted); border-color: var(--line); }
+.det { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px 14px; margin: 0; }
+.det div { min-width: 0; }
+.det .ancho { grid-column: 1 / -1; }
+.det dt { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.det dd { margin: 0; overflow-wrap: anywhere; }
+.acc { display: flex; gap: 8px; flex-wrap: wrap; }
+.mesas-dia { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.md { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; background: var(--panel-2); display: grid; gap: 4px; font-size: 13px; min-width: 0; }
+.md b { overflow-wrap: anywhere; font-size: 13px; }
+.md.ocup { border-color: rgba(255, 111, 134, .5); } .md.bloq { border-color: rgba(255, 210, 63, .5); }
+.md .est { font-size: 12px; color: var(--muted); }
+.fila { display: grid; grid-template-columns: minmax(0, 1fr) 110px 90px; gap: 8px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-2); }
+.fila .pre { display: flex; align-items: center; gap: 6px; }
+.fila .extra { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 520px) { .fila { grid-template-columns: minmax(0, 1fr) 96px; } .fila .nom { grid-column: 1 / -1; } }
+.sw { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.fila-min { display: grid; grid-template-columns: minmax(0, 1fr) 84px auto; gap: 8px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-2); }
+@media (max-width: 520px) { .fila-min { grid-template-columns: minmax(0, 1fr) 84px; } .fila-min .acc { grid-column: 1 / -1; } }
+.pubbar { position: sticky; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); margin-top: 18px; background: var(--panel); border: 1px solid var(--accent); border-radius: 16px; padding: 12px 14px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; box-shadow: 0 0 30px rgba(255, 63, 207, .25); z-index: 5; }
+.login { max-width: 380px; margin: 40px auto; }
+</style>
+</head>
+<body>
+<div class="wrap ancha"><div id="app"><p class="cargando">Cargando…</p></div></div>
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="/shared.js"></script>
+<script>
+(function () {
+'use strict';
+var app = document.getElementById('app');
+var $ = function (s, r) { return (r || document).querySelector(s); };
+var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+var fmt0 = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+var fmt2 = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+var eur = function (n) { n = Number(n) || 0; return Number.isInteger(n) ? fmt0.format(n) : fmt2.format(n); };
+var pad = function (n) { return String(n).padStart(2, '0'); };
+var parseISO = function (s) { var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2], 12); };
+var fechaLarga = function (s) { return parseISO(s).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }); };
+var fechaMsg = function (s) { return parseISO(s).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); };
+var tel = function (s) { var d = String(s || '').replace(/\D/g, ''); if (d.indexOf('00') === 0) d = d.slice(2); if (d.length === 9) d = '34' + d; return d; };
+var tt; function toast(m) { var t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(function () { t.hidden = true; }, 3400); }
+function api(path, opt) {
+  opt = opt || {};
+  return fetch(path, { method: opt.method || 'GET', headers: opt.body ? { 'Content-Type': 'application/json' } : undefined, body: opt.body ? JSON.stringify(opt.body) : undefined })
+    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) { var e = new Error(j.error || 'Error'); e.status = r.status; throw e; } return j; }); });
+}
+
+var S = null, tab = 'reservas', DIA = '', MES = null, ART = null, AJ = null, dirty = false, confirmar = null;
+var minScope = { dia: false, fecha: '' };
+
+/* ---------- acceso ---------- */
+function vistaLogin() {
+  app.innerHTML = '<div class="login card"><img class="logo" src="/logo.png" alt="Malamia" style="margin:0 auto"><h1 style="text-align:center;font-size:24px">Panel de administración</h1>' +
+    '<label class="campo"><span>Contraseña</span><input id="clave" type="password" autocomplete="current-password"></label>' +
+    '<div id="err"></div><button class="btn primary block" type="button" id="entrar">Entrar</button></div>';
+  var go = function () {
+    api('/api/admin/login', { method: 'POST', body: { password: $('#clave').value } }).then(iniciar).catch(function (e) { $('#err').innerHTML = '<div class="aviso mal">' + esc(e.message) + '</div>'; });
+  };
+  $('#entrar').onclick = go; $('#clave').onkeydown = function (e) { if (e.key === 'Enter') go(); }; $('#clave').focus();
+}
+function iniciar() {
+  return api('/api/admin/estado').then(function (s) {
+    S = s;
+    if (!DIA) {  // abrir en el próximo día con reservas pendientes o, si no hay, en hoy
+      var fut = s.reservas.filter(function (r) { return r.fecha >= s.hoy && r.estado !== 'rechazada'; }).sort(function (x, y) { return x.fecha < y.fecha ? -1 : 1; });
+      var pend = fut.filter(function (r) { return r.estado === 'pendiente'; });
+      DIA = (pend[0] || fut[0] || { fecha: s.hoy }).fecha;
+    }
+    if (!MES) { var d = parseISO(DIA); MES = { y: d.getFullYear(), m: d.getMonth() }; }
+    pintar();
+  });
+}
+
+/* ---------- cálculo por día ---------- */
+function vivas(f) { return S.reservas.filter(function (r) { return r.fecha === f && r.estado !== 'rechazada'; }); }
+function resumenDia(f) {
+  var l = vivas(f), res = l.filter(function (r) { return r.tipo === 'reservado'; });
+  return { res: res.length, pers: res.reduce(function (t, r) { return t + r.personas; }, 0), ent: l.filter(function (r) { return r.tipo === 'entrada'; }).reduce(function (t, r) { return t + r.cantidad; }, 0), pend: l.some(function (r) { return r.estado === 'pendiente'; }), val: l.some(function (r) { return r.estado === 'validada'; }) };
+}
+function pendientesTotal() { return S.reservas.filter(function (r) { return r.estado === 'pendiente'; }).length; }
+
+/* ---------- estructura ---------- */
+function pintar() {
+  var np = pendientesTotal(); document.title = (np ? '(' + np + ') ' : '') + 'Panel Malamia';
+  app.innerHTML = '<div class="top"><img src="/logo.png" alt="Malamia"><h1>Panel de reservas</h1><a class="btn sm" href="/" target="_blank" rel="noopener">Ver página de clientes</a><button class="btn sm" type="button" data-a="salir">Salir</button></div>' +
+    '<nav class="tabs" aria-label="Secciones">' + [['reservas', 'Reservas'], ['articulos', 'Artículos'], ['mesas', 'Mesas'], ['ajustes', 'Ajustes']].map(function (t) {
+      return '<button type="button" data-tab="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + t[1] + (t[0] === 'reservas' && np ? '<b>' + np + '</b>' : '') + '</button>';
+    }).join('') + '</nav><div id="cuerpo"></div><div id="pub" class="pubbar" hidden><p style="font-size:14px;flex:1 1 200px">Tienes cambios sin guardar.</p><div class="acc"><button class="btn sm" type="button" data-a="descartar">Descartar</button><button class="btn sm primary" type="button" data-a="guardar">Guardar cambios</button></div></div>';
+  cuerpo();
+}
+function cuerpo() {
+  var c = $('#cuerpo');
+  if (tab === 'reservas') c.innerHTML = vistaReservas();
+  else if (tab === 'articulos') { ART = ART || JSON.parse(JSON.stringify(S.articulos)); c.innerHTML = vistaArticulos(); }
+  else if (tab === 'mesas') c.innerHTML = vistaMesas();
+  else { AJ = AJ || JSON.parse(JSON.stringify(S.ajustes)); c.innerHTML = vistaAjustes(); }
+  if (tab === 'reservas') { pintarCal(); pintarDia(); }
+  $('#pub').hidden = !dirty;
+}
+
+/* ---------- reservas ---------- */
+function vistaReservas() {
+  var f = S.reservas.filter(function (r) { return r.fecha >= S.hoy; });
+  var pend = f.filter(function (r) { return r.estado === 'pendiente'; }).length, val = f.filter(function (r) { return r.estado === 'validada'; });
+  var pers = val.reduce(function (t, r) { return t + (r.tipo === 'reservado' ? r.personas : 0); }, 0);
+  return '<div class="kpis"><div class="kpi w"><b>' + pend + '</b><span>Por validar</span></div><div class="kpi g"><b>' + val.length + '</b><span>Validadas (' + pers + ' personas en reservados)</span></div></div>' +
+    '<div class="grid"><section class="card"><div class="mes-nav"><button class="btn" type="button" data-a="mes" data-d="-1" aria-label="Mes anterior">‹</button><h2 id="mes-t"></h2><button class="btn" type="button" data-a="mes" data-d="0">Hoy</button><button class="btn" type="button" data-a="mes" data-d="1" aria-label="Mes siguiente">›</button></div>' +
+    '<p id="mes-res" class="sub"></p><div id="cal" class="acal"></div>' +
+    '<div class="ley"><span><i class="pt pendiente"></i>Por validar</span><span><i class="pt validada"></i>Validada</span><span>Borde rosa: día abierto</span></div></section>' +
+    '<section class="card" id="dia"></section></div>';
+}
+function pintarCal() {
+  var t = $('#mes-t'); if (!t) return;
+  t.textContent = new Date(MES.y, MES.m, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  var pref = MES.y + '-' + pad(MES.m + 1) + '-';
+  var del = S.reservas.filter(function (r) { return r.tipo === 'reservado' && r.estado !== 'rechazada' && r.fecha.indexOf(pref) === 0; });
+  var pm = del.reduce(function (t, r) { return t + r.personas; }, 0);
+  $('#mes-res').textContent = del.length ? del.length + (del.length === 1 ? ' reserva' : ' reservas') + ' de reservado · ' + pm + ' personas este mes' : 'Sin reservas de reservado este mes';
+  var off = (new Date(MES.y, MES.m, 1).getDay() + 6) % 7, n = new Date(MES.y, MES.m + 1, 0).getDate();
+  var h = ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(function (d) { return '<div class="wd">' + d + '</div>'; }).join('');
+  for (var i = 0; i < off; i++) h += '<div class="dia vac"></div>';
+  for (var d = 1; d <= n; d++) {
+    var f = pref + pad(d), r = resumenDia(f), abierto = Shared.diaAbierto(S.dias, f), natural = [2, 5, 6].indexOf(parseISO(f).getDay()) > -1;
+    h += '<button type="button" class="dia' + (r.res || r.ent ? ' tiene' : '') + (f === DIA ? ' sel' : '') + (f === S.hoy ? ' hoy' : '') + (!abierto ? ' cerrado' : '') + (abierto && !natural ? ' abre' : '') + '" data-a="dia" data-f="' + f + '" aria-label="' + esc(fechaLarga(f)) + ': ' + r.res + ' reservas, ' + r.pers + ' personas">' +
+      '<span class="n">' + d + '</span>' + (r.res || r.ent ? '<span class="c">' + r.res + '<small>res</small></span><span class="pp">' + r.pers + ' pers.</span><span class="pts">' + (r.pend ? '<i class="pt pendiente"></i>' : '') + (r.val ? '<i class="pt validada"></i>' : '') + '</span>' : '') + '</button>';
+  }
+  $('#cal').innerHTML = h;
+}
+function pintarDia() {
+  var c = $('#dia'); if (!c) return;
+  var r = resumenDia(DIA), abierto = Shared.diaAbierto(S.dias, DIA), natural = [2, 5, 6].indexOf(parseISO(DIA).getDay()) > -1;
+  var lista = S.reservas.filter(function (x) { return x.fecha === DIA; }).sort(function (a, b) { return a.creada < b.creada ? -1 : 1; });
+  var ocupadas = {}; lista.forEach(function (x) { if (x.tipo === 'reservado' && x.estado !== 'rechazada') x.mesas.forEach(function (m) { ocupadas[m.id] = x; }); });
+  var bloq = S.bloqueos.filter(function (b) { return b.fecha === DIA; }).map(function (b) { return b.mesa; });
+  var mesasH = S.mesas.map(function (m) {
+    var o = ocupadas[m.id], b = bloq.indexOf(m.id) > -1;
+    return '<div class="md ' + (o ? 'ocup' : b ? 'bloq' : '') + '"><b>' + esc(m.nombre.replace('Reservado ', '')) + '</b><span class="est">' + (o ? esc(o.nombre) + ' · ' + o.mesas.filter(function (z) { return z.id === m.id; })[0].personas + ' pers.' : b ? 'Bloqueada por ti' : 'Libre') + '</span>' +
+      (o ? '' : '<button class="btn sm" type="button" data-a="bloq" data-id="' + m.id + '" data-on="' + (b ? '0' : '1') + '">' + (b ? 'Liberar' : 'Bloquear') + '</button>') + '</div>';
+  }).join('');
+  c.innerHTML = '<div class="dia-cab"><h2 class="cap">' + esc(fechaLarga(DIA)) + '</h2><p class="sub">' + (r.res || r.ent ? r.res + (r.res === 1 ? ' reserva' : ' reservas') + ' · ' + r.pers + ' personas' + (r.ent ? ' · ' + r.ent + ' entradas preventa' : '') : 'Sin reservas') + '</p>' +
+    '<div class="acc"><span class="pill ' + (abierto ? 'validada' : 'rechazada') + '">' + (abierto ? 'Abierto para reservas' : 'Cerrado para reservas') + '</span>' +
+    '<button class="btn sm" type="button" data-a="abrir" data-v="' + (abierto ? '0' : '1') + '">' + (abierto ? 'Cerrar este día' : 'Abrir este día') + '</button></div>' +
+    (!natural && abierto ? '<p class="sub">Este día no es martes, viernes ni sábado: lo has abierto tú.</p>' : '') + '</div>' +
+    '<details><summary class="btn sm" style="display:inline-flex">Estado de las mesas</summary><div class="mesas-dia" style="margin-top:10px">' + mesasH + '</div></details>' +
+    '<div class="stack">' + (lista.length ? lista.map(tarjeta).join('') : '<p class="sub">No hay reservas este día.</p>') + '</div>';
+}
+function lineaTxt(r) {
+  if (r.tipo === 'entrada') return '';
+  return '';
+}
+function mensajeCliente(r, tipo) {
+  var que = r.tipo === 'entrada' ? r.cantidad + (r.cantidad === 1 ? ' entrada preventa' : ' entradas preventa') : r.mesas.map(function (m) { return m.nombre + ' (' + m.personas + ' pers.)'; }).join(', ');
+  if (tipo === 'ok') return 'Hola ' + r.nombre + ', hemos recibido tu pago. Tu reserva en Malamia queda CONFIRMADA.\n\nCódigo: ' + r.codigo + '\nFecha: ' + fechaMsg(r.fecha) + '\n' + (r.tipo === 'entrada' ? 'Entradas: ' : 'Reservado: ') + que + '\nTotal pagado: ' + eur(r.total) + '\n\n¡Te esperamos!';
+  return 'Hola ' + r.nombre + ', gracias por tu reserva en Malamia. Lamentablemente no hemos podido validar tu reserva ' + r.codigo + ' para el ' + fechaMsg(r.fecha) + ' (' + que + '). Escríbenos por aquí y lo solucionamos.';
+}
+function wa(r, tipo, id, cls, txt) {
+  return '<a class="btn sm ' + cls + '" target="_blank" rel="noopener" data-a="' + id + '" data-id="' + r.id + '" href="https://wa.me/' + tel(r.telefono) + '?text=' + encodeURIComponent(mensajeCliente(r, tipo)) + '">' + txt + '</a>';
+}
+function tarjeta(r) {
+  var det = '<div><dt>Teléfono</dt><dd>' + esc(r.telefono) + '</dd></div><div><dt>Total pagado</dt><dd>' + eur(r.total) + '</dd></div>';
+  if (r.tipo === 'entrada') det += '<div><dt>Entradas</dt><dd>' + r.cantidad + '</dd></div>';
+  else {
+    det += '<div><dt>Personas</dt><dd>' + r.personas + '</dd></div><div class="ancho"><dt>Mesas</dt><dd>' + r.mesas.map(function (m) { return esc(m.nombre) + ' (' + m.personas + ' pers.)'; }).join('<br>') + '</dd></div>' +
+      '<div class="ancho"><dt>Botellas</dt><dd>' + esc(r.botellas.map(function (b) { return b.n + '× ' + b.nombre; }).join(', ')) + '</dd></div>' +
+      '<div class="ancho"><dt>Refrescos</dt><dd>' + (r.refrescos && r.refrescos.items.length ? esc(r.refrescos.items.map(function (b) { return b.n + '× ' + b.nombre; }).join(', ')) + (r.refrescos.extra ? ' <span class="sub">(' + r.refrescos.extra + ' extra)</span>' : '') : '—') + '</dd></div>' +
+      '<div class="ancho"><dt>Shishas</dt><dd>' + (r.shishas.length ? esc(r.shishas.map(function (b) { return b.n + '× ' + b.nombre; }).join(', ')) : '—') + '</dd></div>';
+  }
+  det += '<div class="ancho"><dt>Comprobante</dt><dd>' + r.comprobantes.map(function (c, i) { return '<a href="/api/admin/comprobante/' + r.id + '/' + i + '" target="_blank" rel="noopener">' + esc(c.nombre) + '</a>'; }).join(' · ') + '</dd></div>';
+  var btn = function (a, t, cls) { return '<button type="button" class="btn sm ' + (cls || '') + '" data-a="' + a + '" data-id="' + r.id + '">' + t + '</button>'; };
+  var del = btn('borrar', confirmar === r.id ? '¿Seguro? Pulsa para eliminar' : 'Eliminar', 'danger');
+  var acc = r.estado === 'pendiente' ? wa(r, 'ok', 'validar', 'primary', 'Validar y avisar por WhatsApp') + wa(r, 'no', 'rechazar', '', 'Rechazar y avisar') + del
+    : r.estado === 'validada' ? wa(r, 'ok', 'reenviar', '', 'Reenviar confirmación') + btn('pendiente', 'Volver a “por validar”') + del
+    : btn('pendiente', 'Volver a “por validar”') + wa(r, 'no', 'reenviar', '', 'Reenviar aviso') + del;
+  return '<article class="res"><div class="res-h"><span class="cod">' + esc(r.codigo) + ' · ' + (r.tipo === 'entrada' ? 'Entrada preventa' : 'Reservado') + '</span><span class="pill ' + r.estado + '">' + { pendiente: 'Por validar', validada: 'Validada', rechazada: 'Rechazada' }[r.estado] + '</span></div><h3>' + esc(r.nombre) + '</h3><dl class="det">' + det + '</dl><div class="acc">' + acc + '</div></article>';
+}
+
+/* ---------- artículos ---------- */
+function filaArt(k, a, i) {
+  return '<div class="fila" data-k="' + k + '" data-i="' + i + '"><label class="nom campo" style="min-width:0"><span class="sr">Nombre</span><input class="f-nom" value="' + esc(a.nombre) + '" placeholder="Nombre"></label>' +
+    '<div class="pre"><label class="sr" for="p-' + k + i + '">Precio</label><input id="p-' + k + i + '" class="f-pre" type="number" min="0" step="0.5" inputmode="decimal" value="' + esc(a.precio) + '"><span>€</span></div>' +
+    (k === 'refrescos' ? '<div class="pre"><label class="sr" for="s-' + i + '">Suplemento</label><input id="s-' + i + '" class="f-sup" type="number" min="0" step="0.5" inputmode="decimal" value="' + esc(a.suplemento || 0) + '" title="Suplemento dentro de los incluidos"><span>supl.</span></div>' : '<span></span>') +
+    '<div class="extra"><label class="sw"><input type="checkbox" class="f-act"' + (a.activo ? ' checked' : '') + '>Disponible</label><button type="button" class="btn sm danger" data-a="quitar-art">Quitar</button></div></div>';
+}
+function vistaArticulos() {
+  var sec = function (k, t, add, nota) {
+    return '<section class="card"><h2>' + t + '</h2>' + (nota ? '<p class="sub">' + nota + '</p>' : '') + '<div class="stack">' + ART[k].map(function (a, i) { return filaArt(k, a, i); }).join('') + '</div><div><button type="button" class="btn sm" data-a="add-art" data-k="' + k + '">' + add + '</button></div></section>';
+  };
+  return '<div class="stack" style="max-width:720px">' + sec('botellas', 'Botellas', 'Añadir botella', 'Cada botella es para ' + S.ajustes.personasPorBotella + ' personas e incluye ' + S.ajustes.refrescosPorBotella + ' refrescos.') +
+    sec('refrescos', 'Refrescos', 'Añadir refresco', 'Precio = lo que se cobra si pasa de los incluidos. Suplemento = lo que se cobra por refresco incluido (por ejemplo 1 € en Aperol y Red Bull).') +
+    sec('shishas', 'Shishas', 'Añadir shisha') + '</div>';
+}
+
+/* ---------- mesas ---------- */
+function valorMin(id) {
+  if (minScope.dia && minScope.fecha) { var d = S.minimosDia[minScope.fecha]; if (d && Number.isInteger(d[id])) return d[id]; }
+  return Number.isInteger(S.minimosBase[id]) ? S.minimosBase[id] : Shared.mesaPorId(id).min;
+}
+function vistaMesas() {
+  var h = '<div class="stack" style="max-width:760px"><section class="card"><h2>Mínimo de personas por mesa</h2><p class="sub">Elige si el cambio vale siempre o solo para un día concreto. Cada botella es para ' + S.ajustes.personasPorBotella + ' personas.</p>' +
+    '<div class="campos dos"><label class="campo"><span>El cambio se aplica</span><select id="m-ambito"><option value="perm"' + (!minScope.dia ? ' selected' : '') + '>Siempre (permanente)</option><option value="dia"' + (minScope.dia ? ' selected' : '') + '>Solo un día concreto</option></select></label>' +
+    '<label class="campo"' + (minScope.dia ? '' : ' hidden') + ' id="m-fecha-w"><span>Día</span><input id="m-fecha" type="date" value="' + esc(minScope.fecha) + '" min="' + S.hoy + '"></label></div></section>';
+  Shared.RESERVADOS.forEach(function (r) {
+    h += '<section class="card"><h3>' + esc(r.nombre) + '</h3><div class="stack">' + S.mesas.filter(function (m) { return m.reservado === r.id; }).map(function (m) {
+      var tieneDia = minScope.dia && minScope.fecha && S.minimosDia[minScope.fecha] && Number.isInteger(S.minimosDia[minScope.fecha][m.id]);
+      var tienePerm = Number.isInteger(S.minimosBase[m.id]);
+      return '<div class="fila-min"><div style="min-width:0"><b>' + (r.id === 'esc' ? 'Mesa única' : 'Mesa ' + m.id.split('-')[1]) + '</b><div class="sub">' + (minScope.dia ? (tieneDia ? 'Cambiado para ese día' : 'Usa el valor permanente') : (tienePerm ? 'Cambiado (original ' + m.min + ')' : 'Valor original')) + '</div></div>' +
+        '<label class="sr" for="mm-' + m.id + '">Mínimo de ' + esc(m.nombre) + '</label><input id="mm-' + m.id + '" type="number" min="1" max="100" value="' + valorMin(m.id) + '">' +
+        '<div class="acc"><button type="button" class="btn sm primary" data-a="min-guardar" data-id="' + m.id + '">Guardar</button>' + ((minScope.dia ? tieneDia : tienePerm) ? '<button type="button" class="btn sm" data-a="min-quitar" data-id="' + m.id + '">Restablecer</button>' : '') + '</div></div>';
+    }).join('') + '</div></section>';
+  });
+  var dias = Object.keys(S.minimosDia).sort();
+  h += '<section class="card"><h3>Cambios para días concretos</h3>' + (dias.length ? '<div class="stack">' + dias.map(function (f) {
+    return '<div class="item" style="display:grid;gap:4px"><b class="cap">' + esc(fechaLarga(f)) + '</b><span class="sub">' + Object.keys(S.minimosDia[f]).map(function (id) { return esc(Shared.nombreMesa(id).replace('Reservado ', '')) + ': ' + S.minimosDia[f][id]; }).join(' · ') + '</span></div>';
+  }).join('') + '</div>' : '<p class="sub">No hay cambios para días concretos.</p>') + '</section></div>';
+  return h;
+}
+
+/* ---------- ajustes ---------- */
+function vistaAjustes() {
+  var A = AJ, f = function (id, t, v, ex) { return '<label class="campo"><span>' + t + '</span><input id="aj-' + id + '" value="' + esc(v) + '" ' + (ex || '') + '></label>'; };
+  return '<div class="stack" style="max-width:640px"><section class="card"><h2>WhatsApp del local</h2><p class="sub">Número al que llegan las reservas de los clientes.</p>' + f('whatsapp', 'Número (con prefijo si no es de España)', A.whatsapp, 'type="tel" inputmode="tel" placeholder="612 345 678"') + '</section>' +
+    '<section class="card"><h2>Datos de pago</h2><p class="sub">Los ve el cliente al pagar.</p><div class="campos">' + f('titular', 'Nombre del titular', A.titular) + f('iban', 'IBAN', A.iban, 'placeholder="ES00 0000 0000 0000 0000 0000"') + f('bizum', 'Teléfono de Bizum', A.bizum, 'type="tel" inputmode="tel"') + '</div></section>' +
+    '<section class="card"><h2>Entrada de preventa</h2><div class="campos">' + f('entradaTitulo', 'Título', A.entradaTitulo) + f('entradaDesc', 'Qué incluye', A.entradaDesc) + f('entradaPrecio', 'Precio (€)', A.entradaPrecio, 'type="number" min="0" step="0.5" inputmode="decimal"') + '</div></section>' +
+    '<section class="card"><h2>Reglas de las mesas</h2><div class="campos dos">' + f('personasPorBotella', 'Personas por botella', A.personasPorBotella, 'type="number" min="1" inputmode="numeric"') + f('refrescosPorBotella', 'Refrescos incluidos por botella', A.refrescosPorBotella, 'type="number" min="0" inputmode="numeric"') + f('maxPersonasMesa', 'Máximo de personas por mesa', A.maxPersonasMesa, 'type="number" min="5" inputmode="numeric"') + '</div>' +
+    '<label class="sw"><input type="checkbox" id="aj-mostrarNuevoShisha"' + (A.mostrarNuevoShisha ? ' checked' : '') + '>Mostrar la etiqueta NUEVO en las shishas</label></section></div>';
+}
+
+/* ---------- acciones ---------- */
+function marcar() { dirty = true; $('#pub').hidden = false; }
+function recargar() { return api('/api/admin/estado').then(function (s) { S = s; }); }
+function guardarCambios() {
+  var p;
+  if (tab === 'articulos') {
+    p = api('/api/admin/articulos', { method: 'PUT', body: ART }).then(function (r) { S.articulos = r.articulos; ART = JSON.parse(JSON.stringify(r.articulos)); });
+  } else if (tab === 'ajustes') {
+    p = api('/api/admin/ajustes', { method: 'PUT', body: AJ }).then(function (r) { S.ajustes = r.ajustes; AJ = JSON.parse(JSON.stringify(r.ajustes)); });
+  } else return;
+  p.then(function () { dirty = false; toast('Cambios guardados.'); cuerpo(); }).catch(function (e) { toast(e.message); });
+}
+function artDe(el) { var f = el.closest('[data-k]'); return f ? ART[f.dataset.k][Number(f.dataset.i)] : null; }
+
+app.addEventListener('click', function (ev) {
+  var t = ev.target;
+  var tb = t.closest('[data-tab]');
+  if (tb) { if (dirty && !window.__avisado) { toast('Guarda o descarta los cambios antes de cambiar de sección.'); window.__avisado = 1; setTimeout(function () { window.__avisado = 0; }, 3000); return; } tab = tb.dataset.tab; ART = null; AJ = null; cuerpo(); $$('[data-tab]').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === tab)); }); if (tab === 'reservas') { pintarCal(); pintarDia(); } return; }
+  var el = t.closest('[data-a]'); if (!el) return;
+  var a = el.dataset.a, id = el.dataset.id;
+  if (a === 'salir') { api('/api/admin/logout', { method: 'POST', body: {} }).then(function () { location.reload(); }); return; }
+  if (a === 'mes') { var d = Number(el.dataset.d); if (d === 0) { var h = parseISO(S.hoy); MES = { y: h.getFullYear(), m: h.getMonth() }; DIA = S.hoy; } else { var n = new Date(MES.y, MES.m + d, 1); MES = { y: n.getFullYear(), m: n.getMonth() }; } pintarCal(); pintarDia(); return; }
+  if (a === 'dia') { DIA = el.dataset.f; pintarCal(); pintarDia(); return; }
+  if (a === 'abrir') { api('/api/admin/dia', { method: 'PUT', body: { fecha: DIA, abierto: el.dataset.v === '1' } }).then(function (r) { S.dias = r.dias; pintarCal(); pintarDia(); toast(el.dataset.v === '1' ? 'Día abierto para reservas.' : 'Día cerrado para reservas.'); }).catch(function (e) { toast(e.message); }); return; }
+  if (a === 'bloq') { api('/api/admin/bloqueo', { method: 'PUT', body: { fecha: DIA, mesa: id, bloqueada: el.dataset.on === '1' } }).then(function (r) { S.bloqueos = r.bloqueos; pintarDia(); }).catch(function (e) { toast(e.message); }); return; }
+  if (a === 'validar' || a === 'rechazar') {
+    var est = a === 'validar' ? 'validada' : 'rechazada';
+    api('/api/admin/reservas/' + id + '/estado', { method: 'PUT', body: { estado: est } }).then(function () { return recargar(); }).then(function () { pintar(); pintarCal(); pintarDia(); }).catch(function (e) { toast(e.message); });
+    return; /* el enlace de WhatsApp se abre por su cuenta */
+  }
+  if (a === 'reenviar') return;
+  if (a === 'pendiente') { api('/api/admin/reservas/' + id + '/estado', { method: 'PUT', body: { estado: 'pendiente' } }).then(function () { return recargar(); }).then(function () { pintar(); pintarCal(); pintarDia(); }).catch(function (e) { toast(e.message); }); return; }
+  if (a === 'borrar') {
+    if (confirmar === id) { confirmar = null; api('/api/admin/reservas/' + id, { method: 'DELETE' }).then(function () { return recargar(); }).then(function () { pintar(); pintarCal(); pintarDia(); }).catch(function (e) { toast(e.message); }); }
+    else { confirmar = id; pintarDia(); }
+    return;
+  }
+  if (a === 'add-art') { var k = el.dataset.k; ART[k].push({ id: 'n' + Date.now().toString(36), nombre: '', precio: 0, suplemento: 0, activo: true }); marcar(); $('#cuerpo').innerHTML = vistaArticulos(); var ns = $$('.f-nom'); ns[ns.length - 1].focus(); return; }
+  if (a === 'quitar-art') { var f = el.closest('[data-k]'); ART[f.dataset.k].splice(Number(f.dataset.i), 1); marcar(); $('#cuerpo').innerHTML = vistaArticulos(); return; }
+  if (a === 'guardar') { guardarCambios(); return; }
+  if (a === 'descartar') { ART = null; AJ = null; dirty = false; cuerpo(); return; }
+  if (a === 'min-guardar') {
+    if (minScope.dia && !minScope.fecha) { toast('Elige primero el día.'); return; }
+    var v = $('#mm-' + id).value;
+    api('/api/admin/minimos', { method: 'PUT', body: { fecha: minScope.dia ? minScope.fecha : null, mesa: id, valor: v } }).then(function (r) { S.minimosBase = r.minimosBase; S.minimosDia = r.minimosDia; $('#cuerpo').innerHTML = vistaMesas(); toast('Mínimo guardado.'); }).catch(function (e) { toast(e.message); });
+    return;
+  }
+  if (a === 'min-quitar') { api('/api/admin/minimos', { method: 'PUT', body: { fecha: minScope.dia ? minScope.fecha : null, mesa: id, valor: null } }).then(function (r) { S.minimosBase = r.minimosBase; S.minimosDia = r.minimosDia; $('#cuerpo').innerHTML = vistaMesas(); toast('Restablecido.'); }).catch(function (e) { toast(e.message); }); return; }
+});
+app.addEventListener('input', function (ev) {
+  var t = ev.target;
+  if (t.classList.contains('f-nom')) { artDe(t).nombre = t.value; marcar(); }
+  else if (t.classList.contains('f-pre')) { artDe(t).precio = t.value; marcar(); }
+  else if (t.classList.contains('f-sup')) { artDe(t).suplemento = t.value; marcar(); }
+  else if (t.id && t.id.indexOf('aj-') === 0) { AJ[t.id.slice(3)] = t.type === 'checkbox' ? t.checked : t.value; marcar(); }
+});
+app.addEventListener('change', function (ev) {
+  var t = ev.target;
+  if (t.classList.contains('f-act')) { artDe(t).activo = t.checked; marcar(); }
+  else if (t.id === 'm-ambito') { minScope.dia = t.value === 'dia'; $('#cuerpo').innerHTML = vistaMesas(); }
+  else if (t.id === 'm-fecha') { minScope.fecha = t.value; $('#cuerpo').innerHTML = vistaMesas(); }
+});
+
+/* actualización automática: nuevas reservas cada 12 s mientras se mira la pestaña Reservas */
+setInterval(function () {
+  if (!S || document.hidden || tab !== 'reservas') return;
+  recargar().then(function () {
+    var np = pendientesTotal(); document.title = (np ? '(' + np + ') ' : '') + 'Panel Malamia';
+    var b = $('[data-tab="reservas"]'); if (b) b.innerHTML = 'Reservas' + (np ? '<b>' + np + '</b>' : '');
+    var k = $('.kpis'); if (k) { var tmp = document.createElement('div'); tmp.innerHTML = vistaReservas(); k.innerHTML = $('.kpis', tmp).innerHTML; }
+    pintarCal(); pintarDia();
+  }).catch(function (e) { if (e.status === 401) location.reload(); });
+}, 12000);
+
+api('/api/admin/sesion').then(function (r) { return r.admin ? iniciar().then(function () { pintarCal(); pintarDia(); }) : vistaLogin(); }).catch(function () { vistaLogin(); });
+})();
+</script>
+</body>
+</html>

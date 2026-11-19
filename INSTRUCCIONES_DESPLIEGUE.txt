@@ -1,0 +1,15 @@
+MALAMIA - PUBLICACION FUNCIONAL
+
+Esta aplicación necesita un servidor Node.js y almacenamiento persistente. No publicar con Netlify Drop.
+
+1) Subir TODOS los archivos de esta carpeta al nivel principal de un repositorio GitHub.
+2) En Render: New > Web Service > conectar repositorio. Runtime Node. Build Command: npm install. Start Command: npm start.
+3) Añadir variable de entorno ADMIN_PASSWORD con contraseña segura (no colocarla en GitHub).
+4) Usar servicio con disco persistente y montarlo, por ejemplo, en /opt/render/project/src/storage. Añadir variable DATA_DIR=/opt/render/project/src/storage. Sin disco, se perderían datos al reiniciar o desplegar.
+5) Abrir URL publicada: / para clientes y /admin para administración. Configurar WhatsApp y datos de pago desde el panel.
+6) Realizar reserva de prueba, comprobar registro en administración y persistencia.
+7) Guardar copias de seguridad de DATA_DIR.
+
+Para probar localmente: ADMIN_PASSWORD='contraseña-segura' npm start (en Windows PowerShell: $env:ADMIN_PASSWORD='contraseña-segura'; npm start).
+
+Nota: Render ofrece discos persistentes en servicios de pago. Consulta tarifas vigentes antes de contratar.
