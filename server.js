@@ -56,6 +56,8 @@ let DB = {
   articulos: ARTICULOS_DEF,
   minimosBase: {},
   minimosDia: {},
+  maximosBase: {},
+  maximosDia: {},
   dias: { abiertos: [], cerrados: [] },
   bloqueos: [],
   reservas: []
@@ -98,7 +100,8 @@ function codigoNuevo() {
 }
 const ocupa = (r) => r.estado !== 'rechazada';
 
-/* mesas retenidas temporalmente: "fecha|mesa" -> { token, hasta } */
+/* mesas que un cliente está reservando ahora (se ven en amarillo para los demás).
+   No bloquean: varias personas pueden intentar la misma mesa; se la queda quien envía antes la reserva con el comprobante. */
 const holds = new Map();
 function limpiarHolds() { const t = Date.now(); for (const [k, v] of holds) if (v.hasta < t) holds.delete(k); }
 setInterval(limpiarHolds, 30000).unref();
@@ -108,20 +111,24 @@ function estadoMesas(fecha, token) {
   const ocupadas = new Set();
   DB.reservas.forEach((r) => { if (r.tipo === 'reservado' && r.fecha === fecha && ocupa(r)) r.mesas.forEach((m) => ocupadas.add(m.id)); });
   DB.bloqueos.forEach((b) => { if (b.fecha === fecha) ocupadas.add(b.mesa); });
-  const retenidas = [], propias = [];
-  for (const [k, v] of holds) {
-    const [f, mesa] = k.split('|');
-    if (f !== fecha || ocupadas.has(mesa)) continue;
-    (v.token === token ? propias : retenidas).push(mesa);
+  const ret = new Set(), pro = new Set();
+  for (const v of holds.values()) {
+    if (v.fecha !== fecha || ocupadas.has(v.mesa)) continue;
+    (v.token === token ? pro : ret).add(v.mesa);
   }
-  return { ocupadas: [...ocupadas], retenidas, propias };
+  return { ocupadas: [...ocupadas], retenidas: [...ret].filter((m) => !pro.has(m)), propias: [...pro] };
 }
 function minimosDe(fecha) {
   const o = {};
   Shared.MESAS.forEach((t) => { o[t.id] = Shared.minimoMesa(DB, fecha, t.id); });
   return o;
 }
-function cfgPara(fecha) { return { ajustes: DB.ajustes, articulos: DB.articulos, minimos: minimosDe(fecha) }; }
+function maximosDe(fecha) {
+  const o = {};
+  Shared.MESAS.forEach((t) => { o[t.id] = Shared.maximoMesa(DB, fecha, t.id); });
+  return o;
+}
+function cfgPara(fecha) { return { ajustes: DB.ajustes, articulos: DB.articulos, minimos: minimosDe(fecha), maximos: maximosDe(fecha) }; }
 
 /* ---------------- http ---------------- */
 function enviar(res, code, obj, extra) {
@@ -180,7 +187,7 @@ function publico(fecha) {
       whatsapp: A.whatsapp, iban: A.iban, titular: A.titular, bizum: A.bizum,
       entradaPrecio: A.entradaPrecio, entradaTitulo: A.entradaTitulo, entradaDesc: A.entradaDesc,
       personasPorBotella: A.personasPorBotella, refrescosPorBotella: A.refrescosPorBotella,
-      maxPersonasMesa: A.maxPersonasMesa, mostrarNuevoShisha: A.mostrarNuevoShisha
+      mostrarNuevoShisha: A.mostrarNuevoShisha
     },
     articulos: {
       botellas: DB.articulos.botellas.filter((a) => a.activo),
@@ -188,7 +195,8 @@ function publico(fecha) {
       shishas: DB.articulos.shishas.filter((a) => a.activo)
     },
     dias: { abiertos: DB.dias.abiertos.filter((d) => d >= t && d <= lim), cerrados: DB.dias.cerrados.filter((d) => d >= t && d <= lim) },
-    minimos: fecha && esFecha(fecha) ? minimosDe(fecha) : null
+    minimos: fecha && esFecha(fecha) ? minimosDe(fecha) : null,
+    maximos: fecha && esFecha(fecha) ? maximosDe(fecha) : null
   };
 }
 
@@ -222,11 +230,11 @@ function crearReserva(body, req) {
 
   let mesas = [];
   if (!entrada) {
-    /* comprobación y reserva de las mesas en el mismo paso, sin esperas: no puede haber dos compradores */
-    limpiarHolds();
+    /* Gana quien envía antes la reserva con el comprobante. Comprobación y reserva en el mismo paso,
+       así que no puede haber dos compradores. Que otro la esté mirando (amarillo) no impide reservarla. */
     const est = estadoMesas(fecha, token);
-    const ocup = calc.mesas.filter((m) => est.ocupadas.includes(m.id) || est.retenidas.includes(m.id));
-    if (ocup.length) return [409, { error: 'Alguien acaba de coger ' + ocup.map((m) => Shared.nombreMesa(m.id)).join(', ') + '. Elige otra mesa.', ocupadas: ocup.map((m) => m.id) }];
+    const ocup = calc.mesas.filter((m) => est.ocupadas.includes(m.id));
+    if (ocup.length) return [409, { error: (ocup.length === 1 ? 'Esa mesa acaba de ser reservada: ' : 'Esas mesas acaban de ser reservadas: ') + ocup.map((m) => Shared.nombreMesa(m.id)).join(', ') + '. Elige otra.', ocupadas: ocup.map((m) => m.id) }];
     mesas = calc.mesas.map((m) => ({ id: m.id, nombre: Shared.nombreMesa(m.id), personas: m.personas, botellas: m.botellas }));
   }
 
@@ -245,7 +253,7 @@ function crearReserva(body, req) {
     r.mesas = mesas; r.botellas = calc.botellasDet; r.refrescos = calc.refrescos; r.shishas = calc.shishasDet;
   }
   DB.reservas.push(r);
-  mesas.forEach((m) => holds.delete(fecha + '|' + m.id));
+  for (const [k, v] of holds) if (v.fecha === fecha && mesas.some((m) => m.id === v.mesa)) holds.delete(k);
   guardar();
   return [200, { ok: true, codigo: r.codigo, mensaje: mensajeDueno(r) }];
 }
@@ -287,7 +295,7 @@ function rutaAdmin(req, res, url, body) {
   const m = req.method, p = url.pathname;
   if (m === 'GET' && p === '/api/admin/estado') {
     return [200, {
-      hoy: hoy(), ajustes: DB.ajustes, articulos: DB.articulos, minimosBase: DB.minimosBase, minimosDia: DB.minimosDia,
+      hoy: hoy(), ajustes: DB.ajustes, articulos: DB.articulos, minimosBase: DB.minimosBase, minimosDia: DB.minimosDia, maximosBase: DB.maximosBase, maximosDia: DB.maximosDia,
       dias: DB.dias, bloqueos: DB.bloqueos, reservas: DB.reservas,
       mesas: Shared.MESAS.map((t) => ({ id: t.id, nombre: Shared.nombreMesa(t.id), reservado: t.reservado, min: t.min }))
     }];
@@ -298,23 +306,30 @@ function rutaAdmin(req, res, url, body) {
     A.whatsapp = limpio(body.whatsapp, 25); A.iban = limpio(body.iban, 50); A.titular = limpio(body.titular, 80); A.bizum = limpio(body.bizum, 25);
     A.entradaTitulo = limpio(body.entradaTitulo, 60) || 'ENTRADA PREVENTA'; A.entradaDesc = limpio(body.entradaDesc, 120);
     const pr = num(body.entradaPrecio, NaN); if (!(pr >= 0 && pr <= 1000)) return [400, { error: 'Precio de la entrada no válido.' }]; A.entradaPrecio = pr;
-    const ppb = Math.round(num(body.personasPorBotella, 5)), rpb = Math.round(num(body.refrescosPorBotella, 12)), mx = Math.round(num(body.maxPersonasMesa, 30));
-    if (!(ppb >= 1 && ppb <= 50 && rpb >= 0 && rpb <= 100 && mx >= 5 && mx <= 200)) return [400, { error: 'Revisa los números de botellas y personas.' }];
-    A.personasPorBotella = ppb; A.refrescosPorBotella = rpb; A.maxPersonasMesa = mx; A.mostrarNuevoShisha = !!body.mostrarNuevoShisha;
+    const ppb = Math.round(num(body.personasPorBotella, 5)), rpb = Math.round(num(body.refrescosPorBotella, 12));
+    if (!(ppb >= 1 && ppb <= 50 && rpb >= 0 && rpb <= 100)) return [400, { error: 'Revisa los números de botellas y personas.' }];
+    A.personasPorBotella = ppb; A.refrescosPorBotella = rpb; A.mostrarNuevoShisha = !!body.mostrarNuevoShisha;
     DB.ajustes = Object.assign({}, Shared.AJUSTES_DEF, A); guardar(); return [200, { ok: true, ajustes: DB.ajustes }];
   }
   if (m === 'PUT' && p === '/api/admin/minimos') {
     const fecha = body.fecha || null, mesa = limpio(body.mesa, 20), valor = body.valor;
     if (!Shared.mesaPorId(mesa)) return [400, { error: 'Mesa no válida.' }];
     if (fecha && !esFecha(fecha)) return [400, { error: 'Fecha no válida.' }];
-    if (valor === null) {                               // quitar el cambio
-      if (fecha) { if (DB.minimosDia[fecha]) { delete DB.minimosDia[fecha][mesa]; if (!Object.keys(DB.minimosDia[fecha]).length) delete DB.minimosDia[fecha]; } }
-      else delete DB.minimosBase[mesa];
-    } else {
+    /* valor = mínimo; max = máximo (null = automático, el doble del mínimo). valor null = volver al original. */
+    const poner = (base, dia, v) => {
+      if (fecha) {
+        if (v === null) { if (dia[fecha]) { delete dia[fecha][mesa]; if (!Object.keys(dia[fecha]).length) delete dia[fecha]; } }
+        else (dia[fecha] = dia[fecha] || {})[mesa] = v;
+      } else if (v === null) delete base[mesa]; else base[mesa] = v;
+    };
+    if (valor === null) { poner(DB.minimosBase, DB.minimosDia, null); poner(DB.maximosBase, DB.maximosDia, null); }
+    else {
       const v = Math.round(num(valor, NaN)); if (!(v >= 1 && v <= 100)) return [400, { error: 'El mínimo debe estar entre 1 y 100.' }];
-      if (fecha) { (DB.minimosDia[fecha] = DB.minimosDia[fecha] || {})[mesa] = v; } else DB.minimosBase[mesa] = v;
+      const mx = body.max === null || body.max === undefined || body.max === '' ? null : Math.round(num(body.max, NaN));
+      if (mx !== null && !(mx >= v && mx <= 200)) return [400, { error: 'El máximo no puede ser menor que el mínimo (ni superar 200).' }];
+      poner(DB.minimosBase, DB.minimosDia, v); poner(DB.maximosBase, DB.maximosDia, mx);
     }
-    guardar(); return [200, { ok: true, minimosBase: DB.minimosBase, minimosDia: DB.minimosDia }];
+    guardar(); return [200, { ok: true, minimosBase: DB.minimosBase, minimosDia: DB.minimosDia, maximosBase: DB.maximosBase, maximosDia: DB.maximosDia }];
   }
   if (m === 'PUT' && p === '/api/admin/dia') {
     const f = body.fecha; if (!esFecha(f)) return [400, { error: 'Fecha no válida.' }];
@@ -387,12 +402,12 @@ const server = http.createServer(async (req, res) => {
       if (!Shared.diaAbierto(DB.dias, f)) return enviar(res, 400, { error: 'Ese día no admite reservas.' });
       const ids = b.mesas.filter((x) => Shared.mesaPorId(x));
       const est = estadoMesas(f, token);
-      const fuera = ids.filter((x) => est.ocupadas.includes(x) || est.retenidas.includes(x));
-      if (fuera.length) {                                       // si alguna ya no está libre, no se cambia nada
-        return enviar(res, 409, { error: 'Alguien acaba de coger una de tus mesas.', conflicto: fuera, ...est });
+      const fuera = ids.filter((x) => est.ocupadas.includes(x));
+      if (fuera.length) {                                       // solo impide una mesa ya reservada (o bloqueada), no una que otro está mirando
+        return enviar(res, 409, { error: 'Esa mesa acaba de ser reservada por otra persona.', conflicto: fuera, ...est });
       }
-      for (const [k, v] of holds) if (v.token === token && k.startsWith(f + '|')) holds.delete(k);   // soltar las que ya no quiere
-      ids.forEach((x) => holds.set(f + '|' + x, { token, hasta: Date.now() + HOLD_MS }));
+      for (const [k, v] of holds) if (v.token === token && v.fecha === f) holds.delete(k);   // soltar las que ya no quiere
+      ids.forEach((x) => holds.set(f + '|' + x + '|' + token, { fecha: f, mesa: x, token, hasta: Date.now() + HOLD_MS }));
       return enviar(res, 200, { ok: true, minutos: HOLD_MS / 60000, ...estadoMesas(f, token) });
     }
     if (m === 'POST' && p === '/api/reservas') {

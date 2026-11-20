@@ -57,6 +57,7 @@ function pedido() {
 }
 function calc() { return Shared.calcular(cfgCalc(), pedido()); }
 function minDe(id) { return (E.cfg.minimos && E.cfg.minimos[id]) || Shared.mesaPorId(id).min; }
+function maxDe(id) { return (E.cfg.maximos && E.cfg.maximos[id]) || minDe(id) * 2; }
 function botMinMesa(personas) { return Math.max(1, Math.ceil(personas / E.cfg.ajustes.personasPorBotella)); }
 
 /* ---------- carga ---------- */
@@ -116,9 +117,9 @@ function estadoMesa(id) {
 function svgMesas() {
   return Shared.MESAS.map(function (t) {
     var st = estadoMesa(t.id), nombre = Shared.nombreMesa(t.id);
-    var et = { libre: 'libre', ocupada: 'ocupada', retenida: 'alguien la está reservando ahora', propia: 'seleccionada' }[st];
+    var et = { libre: 'libre', ocupada: 'ocupada', retenida: 'alguien la está reservando ahora, puedes pedirla igualmente', propia: 'seleccionada' }[st];
     var txt = st === 'ocupada' ? '✕' : st === 'retenida' ? '…' : st === 'propia' ? '✓' : t.num;
-    var puls = st === 'libre' || st === 'propia';
+    var puls = st !== 'ocupada';
     return '<g class="mesa ' + st + '"' + (puls ? ' role="button" tabindex="0" data-a="mesa" data-id="' + t.id + '"' : '') + ' aria-label="' + esc(nombre + ', ' + et) + '">' +
       '<rect x="' + (t.x - t.w / 2) + '" y="' + (t.y - t.h / 2) + '" width="' + t.w + '" height="' + t.h + '" rx="7"/>' +
       '<text x="' + t.x + '" y="' + (t.y + 5.5) + '">' + txt + '</text></g>';
@@ -135,9 +136,9 @@ function vistaPlano() {
   var c = calc();
   var nb = E.mesas.reduce(function (t, x) { return t + botMinMesa(x.personas); }, 0);
   return '<div class="stack"><button class="volver" type="button" data-a="a-opciones">← Volver</button>' +
-    '<section class="card plano-card"><div style="padding:6px 6px 0"><h2>Elige tu mesa</h2><p class="hint">Cada mesa lleva como mínimo una botella (1 botella cada 5 personas). Puedes reservar varias mesas.</p></div>' +
+    '<section class="card plano-card"><div style="padding:6px 6px 0"><h2>Elige tu mesa</h2><p class="hint">Cada mesa lleva como mínimo una botella (1 botella cada 5 personas). Puedes reservar varias mesas. Si una mesa está en amarillo, otra persona la está reservando ahora, pero puedes pedirla igualmente: se la queda quien envíe antes la reserva con el comprobante de pago.</p></div>' +
     '<div class="plano"><img src="/plano.png" alt="Plano de la discoteca Malamia" width="465" height="730"><svg id="svg-mesas" viewBox="0 0 465 730" aria-label="Mesas del plano">' + svgMesas() + '</svg></div>' +
-    '<div class="leyenda"><span><i class="l"></i>Libre</span><span><i class="o"></i>Ocupada</span><span><i class="r"></i>La están reservando</span><span><i class="p"></i>Tu selección</span></div></section>' +
+    '<div class="leyenda"><span><i class="l"></i>Libre</span><span><i class="o"></i>Ocupada</span><span><i class="r"></i>La están reservando ahora</span><span><i class="p"></i>Tu selección</span></div></section>' +
     '<section class="card"><h2>Tus mesas</h2><div id="sel-mesas">' + listaMesasSel() + '</div></section>' +
     '<div class="barra"><div><div class="hint">Botellas mínimas</div><div class="t" id="barra-bot">' + nb + '</div></div>' +
     '<button class="btn primary" type="button" data-a="a-botellas" id="btn-botellas"' + (E.mesas.length ? '' : ' disabled') + '>Continuar: elegir botellas</button></div></div>';
@@ -155,10 +156,10 @@ function pintarPlano() {
 function pintarSheet() {
   var h = $('#sheet');
   if (!E.sheet) { h.innerHTML = ''; return; }
-  var id = E.sheet.id, p = E.sheet.personas, min = minDe(id), max = E.cfg.ajustes.maxPersonasMesa;
+  var id = E.sheet.id, p = E.sheet.personas, min = minDe(id), max = maxDe(id);
   var nb = botMinMesa(p), ya = E.mesas.some(function (x) { return x.id === id; });
   h.innerHTML = '<div class="fondo" data-a="cerrar-sheet"></div><div class="hoja" role="dialog" aria-modal="true" aria-label="Personas en la mesa"><div class="hoja-in">' +
-    '<div><h3>' + esc(Shared.nombreMesa(id)) + '</h3><p class="hint">Mínimo ' + min + ' personas' + (min >= 10 ? ' (mesa doble)' : '') + '</p></div>' +
+    '<div><h3>' + esc(Shared.nombreMesa(id)) + '</h3><p class="hint">De ' + min + ' a ' + max + ' personas' + (min >= 10 ? ' (mesa doble)' : '') + '</p></div>' +
     '<div class="item"><div class="nom">Personas</div><div class="stepper"><button type="button" data-a="pers" data-d="-1" aria-label="Una persona menos"' + (p <= min ? ' disabled' : '') + '>−</button><output>' + p + '</output><button type="button" data-a="pers" data-d="1" aria-label="Una persona más"' + (p >= max ? ' disabled' : '') + '>+</button></div></div>' +
     '<p class="hint">Necesitas como mínimo <b>' + nb + (nb === 1 ? ' botella' : ' botellas') + '</b> para esta mesa.</p>' +
     '<button class="btn primary block" type="button" data-a="guardar-mesa">' + (ya ? 'Guardar cambios' : 'Añadir mesa') + '</button>' +
@@ -178,7 +179,7 @@ function retener() {
 }
 function quitarOcupadas() {
   var antes = E.mesas.length;
-  E.mesas = E.mesas.filter(function (x) { return E.disp.ocupadas.indexOf(x.id) < 0 && E.disp.retenidas.indexOf(x.id) < 0; });
+  E.mesas = E.mesas.filter(function (x) { return E.disp.ocupadas.indexOf(x.id) < 0; });
   return antes - E.mesas.length;
 }
 function refrescarDisp() {
@@ -186,8 +187,8 @@ function refrescarDisp() {
   return api('/api/disponibilidad?fecha=' + E.fecha + '&token=' + encodeURIComponent(TOKEN)).then(function (d) {
     E.disp = d;
     var q = quitarOcupadas();
-    if (E.etapa === 'plano') { pintarPlano(); } else if (q) { toast('Alguien ha cogido una de tus mesas. Vuelve al plano.'); E.etapa = 'plano'; render(); }
-    if (q && E.etapa === 'plano') toast('Alguien ha cogido una de tus mesas.');
+    if (E.etapa === 'plano') { pintarPlano(); } else if (q) { toast('Una de tus mesas acaba de ser reservada por otra persona. Elige otra.'); E.etapa = 'plano'; render(); }
+    if (q && E.etapa === 'plano') toast('Una de tus mesas acaba de ser reservada por otra persona.');
   }).catch(function () {});
 }
 
@@ -215,8 +216,8 @@ function vistaBotellas() {
     '<div class="slots" id="slots">' + slots + '</div>' +
     '<div class="lista" id="l-bot">' + (X.botellas.length ? stepperItem(X.botellas, E.bot, 'bot', function (a) { return eur(a.precio); }) : '<p class="hint">No hay botellas disponibles.</p>') + '</div></section>' +
     '<section class="card"><h2>Refrescos</h2>' +
-    '<p>Cada botella incluye <b>' + A.refrescosPorBotella + ' refrescos</b>. Aperol y Red Bull llevan un suplemento. Los refrescos que pasen de los incluidos se cobran aparte.</p>' +
-    '<div id="medidor"><div class="lin"><span>Incluidos usados</span><span>' + Math.min(usados, cupo) + ' / ' + cupo + '</span></div><div class="medidor"><i style="width:' + pct + '%"></i></div></div>' +
+    '<p>Cada botella incluye <b>' + A.refrescosPorBotella + ' refrescos</b>. Para continuar elige los <b id="cupo-txt">' + cupo + '</b> que incluyen tus botellas. Aperol y Red Bull llevan un suplemento y los que pasen de los incluidos se cobran aparte.</p>' +
+    '<div id="medidor"><div class="lin"><span>Refrescos incluidos elegidos</span><span>' + usados + ' / ' + cupo + '</span></div><div class="medidor"><i style="width:' + pct + '%"></i></div></div>' +
     '<div class="lista" id="l-ref">' + stepperItem(X.refrescos, E.ref, 'ref', function (a) { return (a.suplemento > 0 ? '<em>+' + eur(a.suplemento) + ' suplemento</em> · ' : '') + 'extra ' + eur(a.precio); }) + '</div></section>' +
     (X.shishas.length ? '<section class="card"><div class="titulo-sec"><h2>Shishas</h2>' + (A.mostrarNuevoShisha ? '<span class="nuevo">NUEVO</span>' : '') + '</div>' +
       '<div class="lista" id="l-shi">' + stepperItem(X.shishas, E.shi, 'shi', function (a) { return eur(a.precio); }) + '</div></section>' : '') +
@@ -233,10 +234,12 @@ function pintarBotellas() {
   $('#l-ref').innerHTML = stepperItem(X.refrescos, E.ref, 'ref', function (a) { return (a.suplemento > 0 ? '<em>+' + eur(a.suplemento) + ' suplemento</em> · ' : '') + 'extra ' + eur(a.precio); });
   if ($('#l-shi')) $('#l-shi').innerHTML = stepperItem(X.shishas, E.shi, 'shi', function (a) { return eur(a.precio); });
   var cupo = c.refrescos ? c.refrescos.cupo : 0, usados = c.refrescos ? c.refrescos.total : 0;
-  $('#medidor').innerHTML = '<div class="lin"><span>Incluidos usados</span><span>' + Math.min(usados, cupo) + ' / ' + cupo + '</span></div><div class="medidor"><i style="width:' + (cupo ? Math.min(100, Math.round(usados * 100 / cupo)) : 0) + '%"></i></div>';
+  $('#medidor').innerHTML = '<div class="lin"><span>Refrescos incluidos elegidos</span><span>' + usados + ' / ' + cupo + '</span></div><div class="medidor"><i style="width:' + (cupo ? Math.min(100, Math.round(usados * 100 / cupo)) : 0) + '%"></i></div>';
   $('#barra-total').textContent = eur(c.total);
   var falta = c.botellasMin - c.botellasSel;
-  $('#barra-msg').textContent = falta > 0 ? 'Elige ' + falta + (falta === 1 ? ' botella más' : ' botellas más') : '';
+  $('#cupo-txt').textContent = cupo;
+  var faltaRef = c.refrescos && X.refrescos.length ? c.refrescos.cupo - c.refrescos.total : 0;
+  $('#barra-msg').textContent = falta > 0 ? 'Elige ' + falta + (falta === 1 ? ' botella más' : ' botellas más') : faltaRef > 0 ? 'Elige ' + faltaRef + (faltaRef === 1 ? ' refresco más' : ' refrescos más') + ' de los incluidos' : '';
   $('#btn-pago').disabled = !c.ok;
 }
 
@@ -411,14 +414,14 @@ function accion(el, ev) {
   }
   if (a === 'cerrar-sheet') { E.sheet = null; pintarSheet(); return; }
   if (a === 'pers') {
-    var s = E.sheet; s.personas = Math.max(minDe(s.id), Math.min(E.cfg.ajustes.maxPersonasMesa, s.personas + Number(el.dataset.d))); pintarSheet(); return;
+    var s = E.sheet; s.personas = Math.max(minDe(s.id), Math.min(maxDe(s.id), s.personas + Number(el.dataset.d))); pintarSheet(); return;
   }
   if (a === 'guardar-mesa') {
     var sh = E.sheet, prev = E.mesas.slice(), ya = E.mesas.filter(function (x) { return x.id === sh.id; })[0];
     if (ya) ya.personas = sh.personas; else E.mesas.push({ id: sh.id, personas: sh.personas });
     E.sheet = null; pintarSheet(); pintarPlano();
     retener().then(pintarPlano).catch(function (e) {
-      if (e.status === 409) { E.mesas = prev; toast('Esa mesa acaba de ser cogida por otra persona.'); pintarPlano(); }
+      if (e.status === 409) { E.mesas = prev; toast('Esa mesa acaba de ser reservada por otra persona.'); pintarPlano(); }
       else toast('No se pudo reservar la mesa. Revisa tu conexión.');
     });
     return;
@@ -455,7 +458,7 @@ app.addEventListener('change', function (ev) {
 
 /* actualización continua: plano cada 5 s y mantener las mesas retenidas mientras se completa la reserva */
 setInterval(function () { if (E.etapa === 'plano' && !E.sheet && !document.hidden) refrescarDisp(); }, 5000);
-setInterval(function () { if (E.modo === 'reservado' && E.mesas.length && E.etapa !== 'enviado' && !document.hidden) retener().then(function () { var q = quitarOcupadas(); if (q) { toast('Alguien ha cogido una de tus mesas.'); E.etapa = 'plano'; render(); } }).catch(function (e) { if (e.status === 409) { quitarOcupadas(); toast('Alguien ha cogido una de tus mesas.'); E.etapa = 'plano'; render(); } }); }, 60000);
+setInterval(function () { if (E.modo === 'reservado' && E.mesas.length && E.etapa !== 'enviado' && !document.hidden) retener().then(function () { var q = quitarOcupadas(); if (q) { toast('Una de tus mesas acaba de ser reservada por otra persona.'); E.etapa = 'plano'; render(); } }).catch(function (e) { if (e.status === 409) { quitarOcupadas(); toast('Una de tus mesas acaba de ser reservada por otra persona.'); E.etapa = 'plano'; render(); } }); }, 60000);
 document.addEventListener('visibilitychange', function () { if (!document.hidden && E.etapa === 'plano') refrescarDisp(); });
 window.addEventListener('pagehide', function () {
   if (E.fecha && E.modo === 'reservado' && E.mesas.length && E.etapa !== 'enviado' && navigator.sendBeacon) navigator.sendBeacon('/api/retener', new Blob([JSON.stringify({ fecha: E.fecha, token: TOKEN, mesas: [] })], { type: 'application/json' }));

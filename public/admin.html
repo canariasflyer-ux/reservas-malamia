@@ -71,8 +71,8 @@
 .fila .extra { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 @media (max-width: 520px) { .fila { grid-template-columns: minmax(0, 1fr) 96px; } .fila .nom { grid-column: 1 / -1; } }
 .sw { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
-.fila-min { display: grid; grid-template-columns: minmax(0, 1fr) 84px auto; gap: 8px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-2); }
-@media (max-width: 520px) { .fila-min { grid-template-columns: minmax(0, 1fr) 84px; } .fila-min .acc { grid-column: 1 / -1; } }
+.fila-min { display: grid; grid-template-columns: minmax(0, 1fr) 84px 84px auto; gap: 8px; align-items: end; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-2); }
+@media (max-width: 560px) { .fila-min { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .fila-min .nm, .fila-min .acc { grid-column: 1 / -1; } }
 .pubbar { position: sticky; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); margin-top: 18px; background: var(--panel); border: 1px solid var(--accent); border-radius: 16px; padding: 12px 14px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; box-shadow: 0 0 30px rgba(255, 63, 207, .25); z-index: 5; }
 .login { max-width: 380px; margin: 40px auto; }
 </style>
@@ -249,26 +249,36 @@ function vistaArticulos() {
 }
 
 /* ---------- mesas ---------- */
-function valorMin(id) {
-  if (minScope.dia && minScope.fecha) { var d = S.minimosDia[minScope.fecha]; if (d && Number.isInteger(d[id])) return d[id]; }
-  return Number.isInteger(S.minimosBase[id]) ? S.minimosBase[id] : Shared.mesaPorId(id).min;
+function estadoAmbito() {
+  return { minimosBase: S.minimosBase, maximosBase: S.maximosBase || {}, minimosDia: minScope.dia ? S.minimosDia : {}, maximosDia: minScope.dia ? (S.maximosDia || {}) : {} };
+}
+function efectivo(id) { var e = estadoAmbito(), f = minScope.dia ? minScope.fecha : ''; return { min: Shared.minimoMesa(e, f, id), max: Shared.maximoMesa(e, f, id) }; }
+function tieneCambio(id) {
+  var b = [S.minimosBase, S.maximosBase || {}], d = [S.minimosDia, S.maximosDia || {}];
+  if (minScope.dia) return !!minScope.fecha && d.some(function (m) { return m[minScope.fecha] && Number.isInteger(m[minScope.fecha][id]); });
+  return b.some(function (m) { return Number.isInteger(m[id]); });
 }
 function vistaMesas() {
-  var h = '<div class="stack" style="max-width:760px"><section class="card"><h2>Mínimo de personas por mesa</h2><p class="sub">Elige si el cambio vale siempre o solo para un día concreto. Cada botella es para ' + S.ajustes.personasPorBotella + ' personas.</p>' +
+  var h = '<div class="stack" style="max-width:760px"><section class="card"><h2>Mínimo y máximo de personas por mesa</h2><p class="sub">Elige si el cambio vale siempre o solo para un día concreto. Si no tocas el máximo, es el doble del mínimo (mínimo 5, máximo 10). Cada botella es para ' + S.ajustes.personasPorBotella + ' personas.</p>' +
     '<div class="campos dos"><label class="campo"><span>El cambio se aplica</span><select id="m-ambito"><option value="perm"' + (!minScope.dia ? ' selected' : '') + '>Siempre (permanente)</option><option value="dia"' + (minScope.dia ? ' selected' : '') + '>Solo un día concreto</option></select></label>' +
     '<label class="campo"' + (minScope.dia ? '' : ' hidden') + ' id="m-fecha-w"><span>Día</span><input id="m-fecha" type="date" value="' + esc(minScope.fecha) + '" min="' + S.hoy + '"></label></div></section>';
   Shared.RESERVADOS.forEach(function (r) {
     h += '<section class="card"><h3>' + esc(r.nombre) + '</h3><div class="stack">' + S.mesas.filter(function (m) { return m.reservado === r.id; }).map(function (m) {
-      var tieneDia = minScope.dia && minScope.fecha && S.minimosDia[minScope.fecha] && Number.isInteger(S.minimosDia[minScope.fecha][m.id]);
-      var tienePerm = Number.isInteger(S.minimosBase[m.id]);
-      return '<div class="fila-min"><div style="min-width:0"><b>' + (r.id === 'esc' ? 'Mesa única' : 'Mesa ' + m.id.split('-')[1]) + '</b><div class="sub">' + (minScope.dia ? (tieneDia ? 'Cambiado para ese día' : 'Usa el valor permanente') : (tienePerm ? 'Cambiado (original ' + m.min + ')' : 'Valor original')) + '</div></div>' +
-        '<label class="sr" for="mm-' + m.id + '">Mínimo de ' + esc(m.nombre) + '</label><input id="mm-' + m.id + '" type="number" min="1" max="100" value="' + valorMin(m.id) + '">' +
-        '<div class="acc"><button type="button" class="btn sm primary" data-a="min-guardar" data-id="' + m.id + '">Guardar</button>' + ((minScope.dia ? tieneDia : tienePerm) ? '<button type="button" class="btn sm" data-a="min-quitar" data-id="' + m.id + '">Restablecer</button>' : '') + '</div></div>';
+      var ef = efectivo(m.id), cambio = tieneCambio(m.id), auto = ef.max === ef.min * 2;
+      return '<div class="fila-min" data-mesa="' + m.id + '" data-auto="' + (auto ? '1' : '0') + '"><div class="nm" style="min-width:0"><b>' + (r.id === 'esc' ? 'Mesa única' : 'Mesa ' + m.id.split('-')[1]) + '</b><div class="sub">' + (minScope.dia ? (cambio ? 'Cambiado para ese día' : 'Usa el valor permanente') : (cambio ? 'Cambiado (original ' + m.min + ' a ' + m.min * 2 + ')' : 'Valor original')) + '</div></div>' +
+        '<label class="campo"><span>Mín.</span><input id="mm-' + m.id + '" type="number" min="1" max="100" value="' + ef.min + '"></label>' +
+        '<label class="campo"><span>Máx.</span><input id="mx-' + m.id + '" type="number" min="1" max="200" value="' + ef.max + '"></label>' +
+        '<div class="acc"><button type="button" class="btn sm primary" data-a="min-guardar" data-id="' + m.id + '">Guardar</button>' + (cambio ? '<button type="button" class="btn sm" data-a="min-quitar" data-id="' + m.id + '">Restablecer</button>' : '') + '</div></div>';
     }).join('') + '</div></section>';
   });
-  var dias = Object.keys(S.minimosDia).sort();
+  var dd = {}; Object.keys(S.minimosDia).forEach(function (f) { dd[f] = dd[f] || {}; Object.keys(S.minimosDia[f]).forEach(function (id) { dd[f][id] = 1; }); });
+  Object.keys(S.maximosDia || {}).forEach(function (f) { dd[f] = dd[f] || {}; Object.keys(S.maximosDia[f]).forEach(function (id) { dd[f][id] = 1; }); });
+  var dias = Object.keys(dd).sort();
   h += '<section class="card"><h3>Cambios para días concretos</h3>' + (dias.length ? '<div class="stack">' + dias.map(function (f) {
-    return '<div class="item" style="display:grid;gap:4px"><b class="cap">' + esc(fechaLarga(f)) + '</b><span class="sub">' + Object.keys(S.minimosDia[f]).map(function (id) { return esc(Shared.nombreMesa(id).replace('Reservado ', '')) + ': ' + S.minimosDia[f][id]; }).join(' · ') + '</span></div>';
+    return '<div class="item" style="display:grid;gap:4px"><b class="cap">' + esc(fechaLarga(f)) + '</b><span class="sub">' + Object.keys(dd[f]).map(function (id) {
+      var e = { minimosBase: S.minimosBase, maximosBase: S.maximosBase || {}, minimosDia: S.minimosDia, maximosDia: S.maximosDia || {} };
+      return esc(Shared.nombreMesa(id).replace('Reservado ', '')) + ': ' + Shared.minimoMesa(e, f, id) + ' a ' + Shared.maximoMesa(e, f, id);
+    }).join(' · ') + '</span></div>';
   }).join('') + '</div>' : '<p class="sub">No hay cambios para días concretos.</p>') + '</section></div>';
   return h;
 }
@@ -279,7 +289,7 @@ function vistaAjustes() {
   return '<div class="stack" style="max-width:640px"><section class="card"><h2>WhatsApp del local</h2><p class="sub">Número al que llegan las reservas de los clientes.</p>' + f('whatsapp', 'Número (con prefijo si no es de España)', A.whatsapp, 'type="tel" inputmode="tel" placeholder="612 345 678"') + '</section>' +
     '<section class="card"><h2>Datos de pago</h2><p class="sub">Los ve el cliente al pagar.</p><div class="campos">' + f('titular', 'Nombre del titular', A.titular) + f('iban', 'IBAN', A.iban, 'placeholder="ES00 0000 0000 0000 0000 0000"') + f('bizum', 'Teléfono de Bizum', A.bizum, 'type="tel" inputmode="tel"') + '</div></section>' +
     '<section class="card"><h2>Entrada de preventa</h2><div class="campos">' + f('entradaTitulo', 'Título', A.entradaTitulo) + f('entradaDesc', 'Qué incluye', A.entradaDesc) + f('entradaPrecio', 'Precio (€)', A.entradaPrecio, 'type="number" min="0" step="0.5" inputmode="decimal"') + '</div></section>' +
-    '<section class="card"><h2>Reglas de las mesas</h2><div class="campos dos">' + f('personasPorBotella', 'Personas por botella', A.personasPorBotella, 'type="number" min="1" inputmode="numeric"') + f('refrescosPorBotella', 'Refrescos incluidos por botella', A.refrescosPorBotella, 'type="number" min="0" inputmode="numeric"') + f('maxPersonasMesa', 'Máximo de personas por mesa', A.maxPersonasMesa, 'type="number" min="5" inputmode="numeric"') + '</div>' +
+    '<section class="card"><h2>Reglas de las mesas</h2><div class="campos dos">' + f('personasPorBotella', 'Personas por botella', A.personasPorBotella, 'type="number" min="1" inputmode="numeric"') + f('refrescosPorBotella', 'Refrescos incluidos por botella', A.refrescosPorBotella, 'type="number" min="0" inputmode="numeric"') + '</div>' +
     '<label class="sw"><input type="checkbox" id="aj-mostrarNuevoShisha"' + (A.mostrarNuevoShisha ? ' checked' : '') + '>Mostrar la etiqueta NUEVO en las shishas</label></section></div>';
 }
 
@@ -326,15 +336,19 @@ app.addEventListener('click', function (ev) {
   if (a === 'descartar') { ART = null; AJ = null; dirty = false; cuerpo(); return; }
   if (a === 'min-guardar') {
     if (minScope.dia && !minScope.fecha) { toast('Elige primero el día.'); return; }
-    var v = $('#mm-' + id).value;
-    api('/api/admin/minimos', { method: 'PUT', body: { fecha: minScope.dia ? minScope.fecha : null, mesa: id, valor: v } }).then(function (r) { S.minimosBase = r.minimosBase; S.minimosDia = r.minimosDia; $('#cuerpo').innerHTML = vistaMesas(); toast('Mínimo guardado.'); }).catch(function (e) { toast(e.message); });
+    var v = Number($('#mm-' + id).value), mx = Number($('#mx-' + id).value);
+    if (!(v >= 1)) { toast('Pon un mínimo de personas.'); return; }
+    if (!(mx >= v)) { toast('El máximo no puede ser menor que el mínimo.'); return; }
+    api('/api/admin/minimos', { method: 'PUT', body: { fecha: minScope.dia ? minScope.fecha : null, mesa: id, valor: v, max: mx === v * 2 ? null : mx } }).then(function (r) { S.minimosBase = r.minimosBase; S.minimosDia = r.minimosDia; S.maximosBase = r.maximosBase; S.maximosDia = r.maximosDia; $('#cuerpo').innerHTML = vistaMesas(); toast('Guardado: de ' + v + ' a ' + mx + ' personas.'); }).catch(function (e) { toast(e.message); });
     return;
   }
-  if (a === 'min-quitar') { api('/api/admin/minimos', { method: 'PUT', body: { fecha: minScope.dia ? minScope.fecha : null, mesa: id, valor: null } }).then(function (r) { S.minimosBase = r.minimosBase; S.minimosDia = r.minimosDia; $('#cuerpo').innerHTML = vistaMesas(); toast('Restablecido.'); }).catch(function (e) { toast(e.message); }); return; }
+  if (a === 'min-quitar') { api('/api/admin/minimos', { method: 'PUT', body: { fecha: minScope.dia ? minScope.fecha : null, mesa: id, valor: null } }).then(function (r) { S.minimosBase = r.minimosBase; S.minimosDia = r.minimosDia; S.maximosBase = r.maximosBase; S.maximosDia = r.maximosDia; $('#cuerpo').innerHTML = vistaMesas(); toast('Restablecido.'); }).catch(function (e) { toast(e.message); }); return; }
 });
 app.addEventListener('input', function (ev) {
   var t = ev.target;
-  if (t.classList.contains('f-nom')) { artDe(t).nombre = t.value; marcar(); }
+  if (t.id && t.id.indexOf('mm-') === 0) { var fila = t.closest('.fila-min'); if (fila && fila.dataset.auto === '1') $('#mx-' + fila.dataset.mesa).value = (Number(t.value) || 0) * 2 || ''; }
+  else if (t.id && t.id.indexOf('mx-') === 0) { var fila2 = t.closest('.fila-min'); if (fila2) fila2.dataset.auto = '0'; }
+  else if (t.classList.contains('f-nom')) { artDe(t).nombre = t.value; marcar(); }
   else if (t.classList.contains('f-pre')) { artDe(t).precio = t.value; marcar(); }
   else if (t.classList.contains('f-sup')) { artDe(t).suplemento = t.value; marcar(); }
   else if (t.id && t.id.indexOf('aj-') === 0) { AJ[t.id.slice(3)] = t.type === 'checkbox' ? t.checked : t.value; marcar(); }

@@ -23,12 +23,13 @@ Copia de seguridad: guarda de vez en cuando la carpeta `DATA_DIR` (contiene `dat
 ## Primeros pasos en el panel (/admin)
 1. Ajustes: número de WhatsApp del local, titular, IBAN y teléfono de Bizum. Hasta que no pongas el WhatsApp, los clientes no pueden enviar reservas.
 2. Artículos: cambia los precios. Los que vienen son de ejemplo.
-3. Mesas: ajusta el mínimo de personas (permanente o solo un día).
+3. Mesas: ajusta el mínimo y el máximo de personas de cada mesa (permanente o solo un día). Si no cambias el máximo, es el doble del mínimo.
 4. Reservas: abre un día que no sea martes, viernes o sábado desde su ficha del calendario.
 
 ## Cómo funciona el flujo
 - El cliente elige fecha, entrada de preventa o reservado, paga por transferencia/Bizum, adjunta el comprobante y pulsa "Enviar reserva por WhatsApp".
-- Las mesas elegidas quedan retenidas 12 minutos mientras completa el pago, y desde que envía la reserva quedan ocupadas. Nadie más puede cogerlas.
+- Una mesa que alguien está reservando se ve en amarillo para los demás, pero se puede pedir igualmente. Se la queda quien envía primero la reserva con el comprobante; a la otra persona la página le avisa de que esa mesa acaba de ser reservada.
+- Para pasar al pago hay que elegir todos los refrescos incluidos en las botellas (12 por botella).
 - La reserva aparece en el panel con su comprobante. Tú validas o rechazas y se abre WhatsApp con el mensaje al cliente.
 - Si rechazas una reserva, sus mesas quedan libres.
 

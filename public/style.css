@@ -110,6 +110,7 @@ button { font-family: inherit; }
 .mesa.ocupada text { fill: #ff6f86; }
 .mesa.retenida rect { fill: rgba(60, 42, 0, .92); stroke: #ffc24b; stroke-dasharray: 5 3; }
 .mesa.retenida text { fill: #ffc24b; }
+.mesa.retenida { cursor: pointer; }
 .mesa.propia { cursor: pointer; }
 .mesa.propia rect { fill: #ff3fcf; stroke: #fff; }
 .mesa.propia text { fill: #1b0517; }

@@ -1,0 +1,16 @@
+ACTUALIZAR MALAMIA V2 EN GITHUB + RENDER
+
+1. En GitHub abre canariasflyer-ux/reservas-malamia.
+2. En la rama main, pulsa Add file > Upload files.
+3. Arrastra los archivos y carpetas de ESTA carpeta (no arrastres este ZIP). Deben quedar server.js y package.json en la raiz, public/ y lib/ como carpetas.
+4. Comprueba la lista de cambios y pulsa Commit changes. GitHub sustituira archivos anteriores que tengan la misma ruta.
+5. Render (si esta conectado a main y tiene Auto-Deploy activado) despliega al detectar el commit. Si no, pulsa Manual Deploy > Deploy latest commit.
+6. Prueba las direcciones / y /admin desde https://reservas-malamia.onrender.com/ .
+
+CONFIGURACION RENDER
+Build: npm install
+Start: npm start
+Variable: ADMIN_PASSWORD (introduce una contraseña privada segura)
+Plan Free: pruebas con datos ficticios exclusivamente. La carpeta data/ NO es persistente en Free.
+
+En produccion hay que disponer de almacenamiento persistente y copias de seguridad y verificar el flujo de reservas y la gestion de documentos.
